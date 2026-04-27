@@ -354,6 +354,16 @@ def _find_in_site(sp: Path, filename: str) -> list[Path]:
 def setup(python_exe: str, ext_dir: Path, gpu_sm: int, cuda_version: int = 0) -> None:
     venv = ext_dir / "venv"
 
+    # ── Platform check ──────────────────────────────────────────────────── #
+    # Trellis.2 GGUF requires custom CUDA wheels (cumesh, flex_gemm) that are
+    # only published for linux_x86_64 / win_amd64. macOS has no CUDA, so the
+    # install would silently leave a broken venv. Fail loudly instead.
+    if platform.system() == "Darwin":
+        raise RuntimeError(
+            "Trellis.2 GGUF requires CUDA wheels (cumesh, flex_gemm) that are "
+            "not published for macOS. Use a Hunyuan3D extension on macOS instead."
+        )
+
     print(f"[setup] Creating venv at {venv} …")
     subprocess.run([python_exe, "-m", "venv", str(venv)], check=True)
 
