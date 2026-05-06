@@ -100,15 +100,15 @@ class Trellis2GGUFGenerator(BaseGenerator):
 
         token = os.environ.get("HUGGING_FACE_HUB_TOKEN") or os.environ.get("HF_TOKEN") or None
 
-        print(f"[Trellis2GGUFGenerator] Downloading {repo} -> {target} ...")
-        print("[Trellis2GGUFGenerator] (Only GGUF weights + config files, ~3-8 GB depending on quantisations.)")
-        snapshot_download(
-            repo_id=repo,
-            local_dir=str(target),
-            allow_patterns=_HF_ALLOW_PATTERNS,
-            token=token,
-        )
-        print("[Trellis2GGUFGenerator] Download complete.")
+        def _do() -> None:
+            snapshot_download(
+                repo_id=repo,
+                local_dir=str(target),
+                allow_patterns=_HF_ALLOW_PATTERNS,
+                token=token,
+            )
+
+        self._run_download(f"{repo} (GGUF weights + config, ~3-8 GB)", _do)
 
     # ------------------------------------------------------------------ #
     # Load / Unload                                                       #
@@ -972,10 +972,15 @@ class Trellis2GGUFGenerator(BaseGenerator):
             dest = gguf_dir / fname
             if dest.exists():
                 continue
-            print(f"[Trellis2] Downloading ComfyUI-GGUF/{fname} …")
+
+            def _do(_url=base + fname, _dest=str(dest)) -> None:
+                urllib.request.urlretrieve(_url, _dest)
+
             try:
-                urllib.request.urlretrieve(base + fname, str(dest))
+                self._run_download(f"ComfyUI-GGUF/{fname}", _do)
             except Exception as exc:
+                # Non-fatal — caller logs a warning but continues. The marker
+                # in _run_download already emitted [DOWNLOAD] fail.
                 print(f"[Trellis2] Warning: could not download {fname}: {exc}")
         print(f"[Trellis2] ComfyUI-GGUF installed at {gguf_dir}")
 
